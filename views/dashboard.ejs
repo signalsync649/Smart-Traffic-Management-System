@@ -1,0 +1,307 @@
+<body class="min-h-screen bg-gradient-to-br from-gray-100 via-blue-50 to-purple-100 p-6">
+  <div class="space-y-10 max-w-7xl mx-auto">
+
+    <!-- Charts Section -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <!-- 24hr Line Chart -->
+      <div
+        class="bg-white p-6 rounded-2xl shadow-md border border-gray-200 hover:shadow-lg hover:border-blue-300 transition-all duration-300 transform hover:-translate-y-1">
+        <div class="flex items-baseline justify-between mb-4">
+          <h2 class="text-lg font-bold text-gray-800">Traffic Data (24hr)</h2>
+          <span class="text-sm text-gray-500">(Today: <%= todayDate %>)</span>
+        </div>
+        <div class="h-64">
+          <canvas id="trafficChart" data-labels="<%= JSON.stringify(labels || []) %>"
+            data-values="<%= JSON.stringify(values || []) %>"></canvas>
+        </div>
+      </div>
+
+      <!-- Daily Vehicle Breakdown (Pie Chart) -->
+      <div
+        class="bg-white p-6 rounded-2xl shadow-md border border-gray-200 hover:shadow-lg hover:border-green-300 transition-all duration-300 transform hover:-translate-y-1 flex flex-col items-center justify-center">
+        <h2 class="text-lg font-bold text-gray-800 mb-4">Daily Vehicle Breakdown</h2>
+        <canvas id="vehiclePieChart" class="max-w-[250px] max-h-[250px]"
+          data-breakdown="<%= JSON.stringify(vehicleBreakdown || {}) %>"></canvas>
+      </div>
+    </div>
+
+    <!-- Peak Hours + Weekly Trends side by side -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+      <!-- Peak Hours -->
+      <div
+        class="bg-white p-6 rounded-2xl shadow-md border border-gray-200 hover:shadow-lg hover:border-yellow-300 transition-all duration-300 transform hover:-translate-y-1">
+        <h2 class="text-lg font-bold text-gray-800 mb-4">Peak Hours (Today)</h2>
+        <div class="h-64">
+          <canvas id="peakHourChart" data-labels="<%= JSON.stringify(peakLabels || []) %>"
+            data-values="<%= JSON.stringify(peakValues || []) %>"></canvas>
+        </div>
+      </div>
+
+      <!-- Weekly Trends -->
+      <div
+        class="bg-white p-6 rounded-2xl shadow-md border border-gray-200 hover:shadow-lg hover:border-purple-300 transition-all duration-300 transform hover:-translate-y-1">
+        <h2 class="text-lg font-bold text-gray-800 mb-4">Weekly Trends</h2>
+        <div class="h-64">
+          <canvas id="weeklyChart" data-slots="<%= JSON.stringify(weeklySlots || []) %>"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stat Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
+      <!-- Emergency Alerts -->
+      <div
+        class="stat-card bg-white p-6 rounded-2xl shadow-md border border-gray-200 hover:shadow-lg hover:border-red-300 flex items-center gap-4 transition-all duration-300 hover:-translate-y-1">
+        <div class="flex-shrink-0 bg-red-100 text-red-600 p-4 rounded-xl">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+            stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M12 9v2m0 4h.01M4.93 4.93l14.14 14.14M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-sm font-medium text-gray-600">Emergency Alerts (Today)</h3>
+          <p id="alertsCount" class="text-3xl font-bold text-gray-900 mt-1 count-up"
+            data-value="<%= emergencyClearances || 0 %>">
+            <%= emergencyClearances || 0 %>
+          </p>
+        </div>
+      </div>
+
+      <!-- Total Vehicles -->
+      <div
+        class="stat-card bg-white p-6 rounded-2xl shadow-md border border-gray-200 hover:shadow-lg hover:border-green-300 flex items-center gap-4 transition-all duration-300 hover:-translate-y-1">
+        <div class="flex-shrink-0 bg-green-100 text-green-600 p-4 rounded-xl">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+            stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M3 12l2-2m0 0l7-7 7 7M13 5v6h6M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 0 01-1 1h-3" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-sm font-medium text-gray-600">Total Vehicles (Today)</h3>
+          <p id="vehiclesCount" class="text-3xl font-bold text-gray-900 mt-1 count-up"
+            data-value="<%= totalVehiclesToday || 0 %>">
+            <%= totalVehiclesToday || 0 %>
+          </p>
+        </div>
+      </div>
+      <!-- Current Area -->
+      <div
+        class="stat-card bg-white p-6 rounded-2xl shadow-md border border-gray-200 hover:shadow-lg hover:border-blue-300 flex items-center gap-4 transition-all duration-700 hover:-translate-y-1">
+        <div class="flex-shrink-0 bg-blue-100 text-blue-600 p-4 rounded-xl">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+            stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M17.657 16.657L13.414 12.414a4 4 0 10-5.657 5.657l4.243 4.243a9 9 0 111.414-1.414z" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-sm font-medium text-gray-600">Current Area</h3>
+          <p class="text-xl font-bold text-gray-900 mt-1">Area ID: <%= areaId %>
+          </p>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</body>
+
+
+
+<!-- Tailwind Animations -->
+<style>
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(15px) scale(0.97);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.8s ease forwards;
+  }
+
+  .delay-200 {
+    animation-delay: 0.2s;
+  }
+
+  .delay-300 {
+    animation-delay: 0.3s;
+  }
+
+  .delay-500 {
+    animation-delay: 0.5s;
+  }
+
+  .delay-700 {
+    animation-delay: 0.7s;
+  }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  /* ---------- Get initial data from canvases ---------- */
+  const trafficCanvas = document.getElementById("trafficChart");
+  const pieCanvas = document.getElementById("vehiclePieChart");
+  const peakCanvas = document.getElementById("peakHourChart");
+  const weeklyCanvas = document.getElementById("weeklyChart");
+
+  let labels = JSON.parse(trafficCanvas.dataset.labels || "[]")
+    .map(l => l.split("-")[0].trim()); // ✅ only "00:00"
+  let values = JSON.parse(trafficCanvas.dataset.values || "[]");
+  let breakdown = JSON.parse(pieCanvas.dataset.breakdown || "{}");
+  let peakLabels = JSON.parse(peakCanvas.dataset.labels || "[]")
+    .map(l => l.split("-")[0].trim());
+  let peakValues = JSON.parse(peakCanvas.dataset.values || "[]");
+  let weeklySlots = JSON.parse(weeklyCanvas.dataset.slots || "[]");
+
+  /* ------------- Line Chart (24hr Traffic) ------------- */
+  const trafficCtx = trafficCanvas.getContext("2d");
+  const trafficChart = new Chart(trafficCtx, {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Vehicles",
+        data: values,
+        borderColor: "rgba(54, 162, 235, 1)",
+        backgroundColor: "rgba(54, 162, 235, 0.2)",
+        fill: true,
+        tension: 0.3
+      }]
+    },
+    options: { responsive: true, plugins: { legend: { display: false } } }
+  });
+
+  /* ------------- Pie Chart (Vehicle Breakdown) ------------- */
+  const pieCtx = pieCanvas.getContext("2d");
+  const vehiclePieChart = new Chart(pieCtx, {
+    type: "pie",
+    data: {
+      labels: ["Cars", "Bikes", "Buses", "Trucks", "Others"],
+      datasets: [{
+        data: [
+          breakdown.cars || 0,
+          breakdown.bikes || 0,
+          breakdown.buses || 0,
+          breakdown.trucks || 0,
+          breakdown.others || 0
+        ],
+        backgroundColor: ["#3b82f6", "#22c55e", "#eab308", "#ef4444", "#9ca3af"]
+      }]
+    },
+    options: { responsive: true }
+  });
+
+  /* ------------- Bar Chart (Peak Hours Today) ------------- */
+  const peakCtx = peakCanvas.getContext("2d");
+  const peakHourChart = new Chart(peakCtx, {
+    type: "bar",
+    data: {
+      labels: peakLabels,
+      datasets: [{
+        label: "Vehicles",
+        data: peakValues,
+        backgroundColor: "rgba(234, 88, 12, 0.7)"
+      }]
+    },
+    options: { responsive: true }
+  });
+
+  /* ------------- Weekly Trends (Line Chart) ------------- */
+  const weeklyCtx = weeklyCanvas.getContext("2d");
+  const weeklyChart = new Chart(weeklyCtx, {
+    type: "line",
+    data: {
+      labels: weeklySlots.map(s => s.label),
+      datasets: [{
+        label: "Total Vehicles",
+        data: weeklySlots.map(s => s.total),
+        borderColor: "rgba(139, 92, 246, 1)",
+        backgroundColor: "rgba(139, 92, 246, 0.2)",
+        fill: true,
+        tension: 0.3
+      }]
+    },
+    options: { responsive: true }
+  });
+
+  /* ===================== SOCKET.IO ===================== */
+  /* ===================== SOCKET.IO ===================== */
+  const socket = io();
+
+  const alertsEl = document.getElementById("alertsCount");
+  const vehiclesEl = document.getElementById("vehiclesCount");
+
+  // ✅ Initialize counters from dataset.value
+  let alertsCount = parseInt(alertsEl.dataset.value) || 0;
+  let vehiclesCount = parseInt(vehiclesEl.dataset.value) || 0;
+
+  socket.on("traffic_update", (data) => {
+    const hour = (data.hour || "").split("-")[0].trim();
+
+    // ✅ 24hr traffic chart update
+    let idx = trafficChart.data.labels.indexOf(hour);
+    if (idx === -1) {
+      trafficChart.data.labels.push(hour);
+      trafficChart.data.datasets[0].data.push(data.total_vehicles);
+    } else {
+      trafficChart.data.datasets[0].data[idx] = data.total_vehicles;
+    }
+    trafficChart.update();
+
+    // ✅ Pie chart update
+    breakdown.cars += data.cars;
+    breakdown.bikes += data.bikes;
+    breakdown.buses += data.buses;
+    breakdown.trucks += data.trucks;
+    breakdown.others += data.others;
+
+    vehiclePieChart.data.datasets[0].data = [
+      breakdown.cars,
+      breakdown.bikes,
+      breakdown.buses,
+      breakdown.trucks,
+      breakdown.others
+    ];
+    vehiclePieChart.update();
+
+    // ✅ Peak hours update
+    let peakIndex = peakLabels.indexOf(hour);
+    if (peakIndex === -1) {
+      peakLabels.push(hour);
+      peakValues.push(data.total_vehicles);
+    } else {
+      peakValues[peakIndex] = data.total_vehicles;
+    }
+    const zipped = peakLabels.map((l, i) => ({ l, v: peakValues[i] }));
+    zipped.sort((a, b) => b.v - a.v);
+    const top5 = zipped.slice(0, 5);
+    peakHourChart.data.labels = top5.map(z => z.l);
+    peakHourChart.data.datasets[0].data = top5.map(z => z.v);
+    peakHourChart.update();
+
+    // ✅ Weekly chart update
+    const todayKey = data.date;
+    const slot = weeklySlots.find(s => s.key === todayKey);
+    if (slot) slot.total += data.total_vehicles;
+    weeklyChart.data.datasets[0].data = weeklySlots.map(s => s.total);
+    weeklyChart.update();
+
+    // ✅ Stat cards update
+    alertsCount += (data.emergency_clearances || 0);
+    vehiclesCount += (data.total_vehicles || 0);
+
+    alertsEl.textContent = alertsCount;
+    vehiclesEl.textContent = vehiclesCount;
+  });
+
+</script>

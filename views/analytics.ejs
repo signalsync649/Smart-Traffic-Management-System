@@ -1,0 +1,282 @@
+<div class="space-y-10 max-w-7xl mx-auto">
+
+  <!-- Title -->
+  <div class="text-center mb-8 animate-fade-in">
+    <h1 class="text-2xl md:text-3xl font-bold text-gray-800">📊 Analytics Dashboard</h1>
+    <p class="text-gray-600 mt-2">
+      Detailed breakdown of traffic across signals in Area ID: <%= areaId || "N/A" %>
+    </p>
+  </div>
+
+  <!-- Date Filter -->
+  <form method="get" action="/analytics"
+    class="bg-white p-4 rounded-2xl shadow border border-gray-200 flex flex-wrap items-end gap-4 mb-6 animate-slide-up">
+    <div>
+      <label class="text-sm text-gray-600">From:</label>
+      <input type="date" name="from" value="<%= from || "" %>" class="border rounded-lg px-3 py-2 text-sm">
+    </div>
+    <div>
+      <label class="text-sm text-gray-600">To:</label>
+      <input type="date" name="to" value="<%= to || "" %>" class="border rounded-lg px-3 py-2 text-sm">
+    </div>
+    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+      Apply
+    </button>
+
+    <!-- Quick buttons -->
+    <div class="flex gap-2 ml-auto">
+      <a href="/analytics?from=<%= today %>&to=<%= today %>"
+        class="bg-gray-100 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-200 transition">Today</a>
+      <a href="/analytics?from=<%= last7 %>&to=<%= today %>"
+        class="bg-gray-100 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-200 transition">Last 7 Days</a>
+      <a href="/analytics?from=<%= last30 %>&to=<%= today %>"
+        class="bg-gray-100 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-200 transition">Last 30 Days</a>
+    </div>
+  </form>
+
+
+
+  <!-- Top Signal -->
+  <div
+    class="bg-white p-6 rounded-2xl shadow-md border border-gray-200 hover:shadow-lg transition-all duration-300 animate-fade-in">
+    <h2 class="text-lg font-bold text-gray-800 mb-4">Major Traffic Flow</h2>
+    <p class="text-gray-600 mb-3">Based on the selected period (<%= periodLabel || "N/A" %>):</p>
+    <div class="flex items-center gap-4">
+      <div class="flex-shrink-0 bg-green-100 text-green-600 p-4 rounded-xl animate-bounce">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+          stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+      </div>
+      <div>
+        <h3 class="text-sm font-medium text-gray-600">Highest Traffic Signal</h3>
+        <p class="text-xl font-bold text-gray-900 mt-1">
+          <%= topSignal ? topSignal.name : "N/A" %> (Total: <%= topSignal ? topSignal.total : 0 %> vehicles)
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div
+      class="bg-white p-6 rounded-2xl shadow-md border border-gray-200 hover:shadow-lg transition-all animate-slide-up">
+      <h2 class="text-lg font-bold text-gray-800 mb-4">Per Signal Trend</h2>
+      <div class="h-80">
+        <canvas id="signalTrendChart" class="w-full h-full"></canvas>
+        </div>
+    </div>
+
+    <div
+      class="bg-white p-6 rounded-2xl shadow-md border border-gray-200 hover:shadow-lg transition-all animate-slide-up">
+      <h2 class="text-lg font-bold text-gray-800 mb-4">Vehicle Type Contribution</h2>
+      <div class="h-80">
+        <canvas id="vehicleStackedChart" class="w-full h-full"></canvas>
+        </div>
+    </div>
+
+    <div
+      class="bg-white p-6 rounded-2xl shadow-md border border-gray-200 hover:shadow-lg transition-all animate-slide-up">
+      <h2 class="text-lg font-bold text-gray-800 mb-4">Daily Total Traffic Trend</h2>
+      <div class="h-80">
+        <canvas id="dailyTrendChart" class="w-full h-full"></canvas>
+        </div>
+    </div>
+
+    <div
+      class="bg-white p-6 rounded-2xl shadow-md border border-gray-200 hover:shadow-lg transition-all animate-slide-up">
+      <h2 class="text-lg font-bold text-gray-800 mb-4">Overall Vehicle Type Distribution</h2>
+      <div class="h-80">
+        <canvas id="vehicleDonutChart" class="w-full h-full"></canvas>
+        </div>
+    </div>
+  </div>
+    <!-- Hourly Breakdown Table -->
+  <div
+    class="bg-white p-6 rounded-2xl shadow-md border border-gray-200 hover:shadow-lg transition-all duration-300 animate-slide-up">
+    <h2 class="text-lg font-bold text-gray-800 mb-4">Hourly Vehicle Breakdown (by Signal)</h2>
+
+    <!-- Signal Filter -->
+    <div class="mb-4 flex items-center gap-2">
+      <label for="signalFilter" class="text-sm font-medium text-gray-700">Select Signal:</label>
+      <select id="signalFilter" class="border rounded-lg px-3 py-2 text-sm">
+        <option value="all">All Signals</option>
+        <% 
+          const uniqueSignals = [...new Set((hourlyBreakdown || []).map(r => r.signal_name))];
+          uniqueSignals.forEach(sig => { 
+        %>
+          <option value="<%= sig %>"><%= sig %></option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Hour</th>
+            <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Signal</th>
+            <th class="px-4 py-2 text-center text-sm font-medium text-gray-700">Cars</th>
+            <th class="px-4 py-2 text-center text-sm font-medium text-gray-700">Bikes</th>
+            <th class="px-4 py-2 text-center text-sm font-medium text-gray-700">Buses</th>
+            <th class="px-4 py-2 text-center text-sm font-medium text-gray-700">Trucks</th>
+            <th class="px-4 py-2 text-center text-sm font-medium text-gray-700">Others</th>
+            <th class="px-4 py-2 text-center text-sm font-bold text-gray-900">Total</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% (hourlyBreakdown || []).forEach(row => { %>
+            <tr class="hover:bg-gray-50 transition" data-signal="<%= row.signal_name %>">
+              <td class="px-4 py-2 text-sm text-gray-700"><%= row.hour_slot %></td>
+              <td class="px-4 py-2 text-sm text-gray-700"><%= row.signal_name %></td>
+              <td class="px-4 py-2 text-sm text-center text-gray-600"><%= row.cars %></td>
+              <td class="px-4 py-2 text-sm text-center text-gray-600"><%= row.bikes %></td>
+              <td class="px-4 py-2 text-sm text-center text-gray-600"><%= row.buses %></td>
+              <td class="px-4 py-2 text-sm text-center text-gray-600"><%= row.trucks %></td>
+              <td class="px-4 py-2 text-sm text-center text-gray-600"><%= row.others %></td>
+              <td class="px-4 py-2 text-sm text-center font-bold text-gray-900"><%= row.total %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- JSON Data -->
+<script type="application/json" id="signalTrends"><%- JSON.stringify(signalTrends || []) %></script>
+<script type="application/json" id="vehicleTypes"><%- JSON.stringify(vehicleTypes || {}) %></script>
+<script type="application/json" id="dailyTrend"><%- JSON.stringify(dailyTrend || []) %></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  console.log(
+    "Signal canvas size:",
+    document.getElementById("signalTrendChart").clientWidth,
+    document.getElementById("signalTrendChart").clientHeight
+  );
+
+  document.addEventListener("DOMContentLoaded", () => {
+    // Table filter
+    const signalFilter = document.getElementById("signalFilter");
+    const tableRows = document.querySelectorAll("tbody tr");
+    signalFilter?.addEventListener("change", () => {
+      const selected = signalFilter.value;
+      tableRows.forEach(row => {
+        row.style.display =
+          selected === "all" || row.dataset.signal === selected ? "" : "none";
+      });
+    });
+
+    // Parse JSON
+    const parseData = (id) => {
+      const el = document.getElementById(id);
+      if (!el) return null;
+      try {
+        return JSON.parse(el.textContent);
+      } catch (err) {
+        console.error("Failed to parse", id, err);
+        return null;
+      }
+    };
+
+    const signalTrends = parseData("signalTrends");
+    const vehicleTypes = parseData("vehicleTypes");
+    const dailyTrend = parseData("dailyTrend");
+
+    console.log("signalTrends", signalTrends);
+    console.log("vehicleTypes", vehicleTypes);
+    console.log("dailyTrend", dailyTrend);
+
+    // Chart.js defaults
+    Chart.defaults.animation = { duration: 1200, easing: "easeOutQuart" };
+
+    // 🚦 Signal Traffic
+    if (signalTrends?.length) {
+      console.log("Creating Signal Trend chart with:", signalTrends);
+
+      const allHours = [...new Set(signalTrends.flatMap(sig => sig.hours))].sort();
+
+      const datasets = signalTrends.map(sig => ({
+        label: sig.signal,
+        data: allHours.map(h => {
+          const idx = sig.hours.indexOf(h);
+          return idx >= 0 ? sig.values[idx] : 0;
+        }),
+        borderWidth: 2,
+        tension: 0.3,
+        fill: false,
+        borderColor: "#" + Math.floor(Math.random() * 16777215).toString(16) // random visible color
+      }));
+
+      console.log("Signal Trends Chart Data:", { labels: allHours, datasets });
+
+      const ctx = document.getElementById("signalTrendChart").getContext("2d");
+      new Chart(ctx, {
+        type: "line",
+        data: { labels: allHours, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: "top" } },
+          scales: {
+            x: { title: { display: true, text: "Hour of Day" } },
+            y: { beginAtZero: true, title: { display: true, text: "Vehicles" } }
+          }
+        }
+      });
+    }
+
+    // Vehicle Type Stacked
+    if (vehicleTypes?.hours?.length) {
+      console.log("Creating Vehicle Type Stacked chart with:", vehicleTypes);
+      new Chart(document.getElementById("vehicleStackedChart").getContext("2d"), {
+        type: "bar",
+        data: {
+          labels: vehicleTypes.hours,
+          datasets: [
+            { label: "Cars", data: vehicleTypes.cars, backgroundColor: "#3b82f6" },
+            { label: "Bikes", data: vehicleTypes.bikes, backgroundColor: "#22c55e" },
+            { label: "Buses", data: vehicleTypes.buses, backgroundColor: "#eab308" },
+            { label: "Trucks", data: vehicleTypes.trucks, backgroundColor: "#ef4444" },
+            { label: "Others", data: vehicleTypes.others, backgroundColor: "#9ca3af" }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } } }
+      });
+    }
+
+    // Daily Trend
+    if (dailyTrend?.length) {
+      console.log("Creating Daily Trend chart with:", dailyTrend);
+      new Chart(document.getElementById("dailyTrendChart").getContext("2d"), {
+        type: "bar",
+        data: {
+          labels: dailyTrend.map(d => d.date),
+          datasets: [{ label: "Total Vehicles", data: dailyTrend.map(d => d.total), backgroundColor: "#06b6d4" }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+
+    // Vehicle Pie
+    if (vehicleTypes?.cars?.length) {
+      console.log("Creating Vehicle Donut chart with:", vehicleTypes);
+      const totals = {
+        Cars: vehicleTypes.cars.reduce((a, b) => a + b, 0),
+        Bikes: vehicleTypes.bikes.reduce((a, b) => a + b, 0),
+        Buses: vehicleTypes.buses.reduce((a, b) => a + b, 0),
+        Trucks: vehicleTypes.trucks.reduce((a, b) => a + b, 0),
+        Others: vehicleTypes.others.reduce((a, b) => a + b, 0)
+      };
+      new Chart(document.getElementById("vehicleDonutChart").getContext("2d"), {
+        type: "doughnut",
+        data: {
+          labels: Object.keys(totals),
+          datasets: [{ data: Object.values(totals), backgroundColor: ["#3b82f6", "#22c55e", "#eab308", "#ef4444", "#9ca3af"] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+  });
+</script>

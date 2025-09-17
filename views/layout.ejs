@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title><%= title %></title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="/styles/output.css" rel="stylesheet">
+</head>
+<body class="flex flex-col min-h-screen bg-gradient-to-r from-blue-50 to-blue-100">
+
+  <!-- Header -->
+  <%- include("partials/header") %>
+
+  <div class="flex flex-1">
+    <!-- Sidebar (only if enabled) -->
+    <% if (user && showSidebar) { %>
+      <%- include("partials/sidebar") %>
+    <% } %>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-4">
+      <%- body %>
+    </main>
+  </div>
+
+  <!-- Footer -->
+  <%- include("partials/footer") %>
+
+</body>
+</html>

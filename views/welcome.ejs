@@ -1,0 +1,19 @@
+<div class="max-w-md mx-auto mt-10 bg-white p-6 rounded-2xl shadow-md">
+  <h1 class="text-2xl font-bold mb-4 text-center">
+    Welcome, <%= user.username %> 🎉
+  </h1>
+
+  <form action="/select-area" method="POST" class="space-y-4">
+    <label class="block mb-2 text-gray-700 font-medium">Select Area</label>
+    <select name="area_id" required
+      class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+      <% areas.forEach(area => { %>
+        <option value="<%= area.area_id %>"><%= area.area_name %></option>
+      <% }) %>
+    </select>
+    <button type="submit"
+      class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition duration-200">
+      Go to Dashboard
+    </button>
+  </form>
+</div>
