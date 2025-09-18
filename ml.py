@@ -78,20 +78,29 @@ def capture_all_frames():
 
 # Display all signals with active timer
 def show_timer_screen(active_lane_idx, timer_text, all_vehicle_counts, emergency_lanes=None, wait_ms=50):
-    height, width = 520, 1200
+    # Get screen resolution for fullscreen display
+    screen_width = 1920
+    screen_height = 1080
+    height, width = screen_height, screen_width
+
     img = np.zeros((height, width, 3), dtype=np.uint8)
     font = cv2.FONT_HERSHEY_SIMPLEX
     t = time.time()  # for animation
 
     signal_count = len(CCTV_URLS)
-    segment_width = width // signal_count
-    base_y = 200
+
+    # Add extra left and right padding
+    left_padding = 150
+    right_padding = 150
+    usable_width = width - (left_padding + right_padding)
+    segment_width = usable_width // signal_count
+    base_y = height // 2 - 100  # vertically center signals
 
     emergency_lanes = emergency_lanes or []
 
     for idx in sorted(CCTV_URLS.keys()):
-        # Center signals horizontally
-        start_x = (idx - 1) * segment_width + segment_width // 2
+        # Center signals horizontally with padding
+        start_x = left_padding + (idx - 1) * segment_width + segment_width // 2
 
         # Pulsing green for active signal
         if idx == active_lane_idx:
@@ -101,38 +110,42 @@ def show_timer_screen(active_lane_idx, timer_text, all_vehicle_counts, emergency
             color = (0, 0, 255)
 
         # Draw signal circle
-        cv2.circle(img, (start_x, base_y), 40, color, -1)
+        cv2.circle(img, (start_x, base_y), 60, color, -1)
 
         # Blinking red border for emergency
         if idx in emergency_lanes:
-            if int(t*2) % 2 == 0:  # blink every 0.5s
-                cv2.circle(img, (start_x, base_y), 45, (0,0,255), 4)
+            if int(t * 2) % 2 == 0:  # blink every 0.5s
+                cv2.circle(img, (start_x, base_y), 70, (0, 0, 255), 6)
 
         # Timer above active signal
         if idx == active_lane_idx:
-            timer_size = cv2.getTextSize(timer_text, font, 2, 3)[0]
+            timer_size = cv2.getTextSize(timer_text, font, 3, 5)[0]
             timer_x = start_x - timer_size[0] // 2
-            timer_y = base_y - 60
-            cv2.putText(img, timer_text, (timer_x, timer_y), font, 2, (0, 255, 0), 3, cv2.LINE_AA)
+            timer_y = base_y - 120
+            cv2.putText(img, timer_text, (timer_x, timer_y), font, 3, (0, 255, 0), 5, cv2.LINE_AA)
 
         # Label below
         label_text = f"Signal {idx}"
-        label_size = cv2.getTextSize(label_text, font, 1, 2)[0]
+        label_size = cv2.getTextSize(label_text, font, 1.5, 3)[0]
         label_x = start_x - label_size[0] // 2
-        label_y = base_y + 70
-        cv2.putText(img, label_text, (label_x, label_y), font, 1, (255, 255, 255), 2, cv2.LINE_AA)
+        label_y = base_y + 120
+        cv2.putText(img, label_text, (label_x, label_y), font, 1.5, (255, 255, 255), 3, cv2.LINE_AA)
 
         # Vehicle counts
         counts = all_vehicle_counts.get(idx, {})
         counts_str = " ".join([f"{k}:{v}" for k, v in counts.items()])
-        counts_size = cv2.getTextSize(counts_str, font, 0.6, 1)[0]
+        counts_size = cv2.getTextSize(counts_str, font, 1, 2)[0]
         counts_x = start_x - counts_size[0] // 2
-        counts_y = base_y + 110
-        cv2.putText(img, counts_str, (counts_x, counts_y), font, 0.6, (230, 230, 230), 1, cv2.LINE_AA)
+        counts_y = base_y + 170
+        cv2.putText(img, counts_str, (counts_x, counts_y), font, 1, (230, 230, 230), 2, cv2.LINE_AA)
 
-    # Simple footer
+    # Footer
     footer = "Press 'q' to quit / Auto updating every second"
-    cv2.putText(img, footer, (20, height - 20), font, 0.5, (180, 180, 180), 1, cv2.LINE_AA)
+    cv2.putText(img, footer, (40, height - 40), font, 1, (180, 180, 180), 2, cv2.LINE_AA)
+
+    # Fullscreen display
+    cv2.namedWindow("TRAFFIC SIGNALS", cv2.WND_PROP_FULLSCREEN)
+    cv2.setWindowProperty("TRAFFIC SIGNALS", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
     cv2.imshow("TRAFFIC SIGNALS", img)
     key = cv2.waitKey(wait_ms) & 0xFF
