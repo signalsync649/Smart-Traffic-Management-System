@@ -1,0 +1,107 @@
+<div class="space-y-10 max-w-7xl mx-auto">
+
+  <!-- Title -->
+  <div class="text-center mb-8 animate-fade-in">
+    <h1 class="text-2xl md:text-3xl font-bold text-gray-800">🚨 E-Challans</h1>
+    <p class="text-gray-600 mt-2">
+      Viewing challans for Area ID: <%= areaId || "N/A" %>
+    </p>
+  </div>
+
+  <!-- Date Filter -->
+  <form method="get" action="/challans"
+    class="bg-white p-4 rounded-2xl shadow border border-gray-200 flex flex-wrap items-end gap-4 mb-6 animate-slide-up">
+    <div>
+      <label class="text-sm text-gray-600">From:</label>
+      <input type="date" name="from" value="<%= from || "" %>" class="border rounded-lg px-3 py-2 text-sm">
+    </div>
+    <div>
+      <label class="text-sm text-gray-600">To:</label>
+      <input type="date" name="to" value="<%= to || "" %>" class="border rounded-lg px-3 py-2 text-sm">
+    </div>
+    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+      Apply
+    </button>
+
+    <!-- Quick buttons -->
+    <div class="flex gap-2 ml-auto">
+      <a href="/challans?from=<%= today %>&to=<%= today %>"
+        class="bg-gray-100 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-200 transition">Today</a>
+      <a href="/challans?from=<%= last7 %>&to=<%= today %>"
+        class="bg-gray-100 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-200 transition">Last 7 Days</a>
+      <a href="/challans?from=<%= last30 %>&to=<%= today %>"
+        class="bg-gray-100 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-200 transition">Last 30 Days</a>
+    </div>
+  </form>
+
+  <!-- Challan Table -->
+  <div class="overflow-x-auto bg-white rounded-lg shadow-md p-4 animate-slide-up">
+    <table class="w-full border-collapse text-sm text-left">
+      <thead class="bg-gray-100">
+        <tr>
+          <th class="px-4 py-2 border">#</th>
+          <th class="px-4 py-2 border">Timestamp</th>
+          <th class="px-4 py-2 border">Area</th>
+          <th class="px-4 py-2 border">Signal</th>
+          <th class="px-4 py-2 border">Photo</th>
+          <th class="px-4 py-2 border">Number Plate</th>
+          <th class="px-4 py-2 border">Violation</th>
+          <th class="px-4 py-2 border">Fine (₹)</th>
+        </tr>
+      </thead>
+      <tbody id="challanTableBody">
+        <% if (challans && challans.length > 0) { %>
+          <% challans.forEach(challan => { %>
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-2 border"><%= challan.challan_id %></td>
+              <td class="px-4 py-2 border">
+                <%= challan.violation_time ? new Date(challan.violation_time).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "N/A" %>
+              </td>
+              <td class="px-4 py-2 border"><%= challan.area_name %></td>
+              <td class="px-4 py-2 border"><%= challan.signal_name %></td>
+              <td class="px-4 py-2 border">
+                <% if (challan.photo_url) { %>
+                  <img src="<%= challan.photo_url %>" class="h-16 rounded shadow">
+                <% } else { %>
+                  N/A
+                <% } %>
+              </td>
+              <td class="px-4 py-2 border"><%= challan.number_plate || "N/A" %></td>
+              <td class="px-4 py-2 border"><%= challan.violation_type || "N/A" %></td>
+              <td class="px-4 py-2 border font-semibold text-red-600">₹<%= challan.fine_amount || 0 %></td>
+            </tr>
+          <% }) %>
+        <% } else { %>
+          <tr>
+            <td colspan="8" class="px-4 py-4 text-center text-gray-500">No challans recorded yet.</td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Live Update via Socket.IO -->
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+
+  socket.on("challan_update", (data) => {
+    const table = document.getElementById("challanTableBody");
+    const row = document.createElement("tr");
+    row.className = "hover:bg-gray-50";
+
+    row.innerHTML = `
+      <td class="px-4 py-2 border">${data.challan_id}</td>
+      <td class="px-4 py-2 border">${data.violation_time ? new Date(data.violation_time).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "N/A"}</td>
+      <td class="px-4 py-2 border">${data.area_name}</td>
+      <td class="px-4 py-2 border">${data.signal_name}</td>
+      <td class="px-4 py-2 border">${data.photo_url ? `<img src="${data.photo_url}" class="h-16 rounded shadow">` : "N/A"}</td>
+      <td class="px-4 py-2 border">${data.number_plate || "N/A"}</td>
+      <td class="px-4 py-2 border">${data.violation_type || "N/A"}</td>
+      <td class="px-4 py-2 border font-semibold text-red-600">₹${data.fine_amount || 0}</td>
+    `;
+
+    table.prepend(row);
+  });
+</script>

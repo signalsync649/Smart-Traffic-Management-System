@@ -422,6 +422,124 @@ app.get("/analytics", isAuthenticated, async (req, res) => {
   }
 });
 
+/* ========================= CHALLANS ========================= */
+app.get("/challans", isAuthenticated, async (req, res) => {
+  const areaId = req.session.selectedArea;
+  if (!areaId) return res.redirect("/");
+
+  try {
+    // Get query params
+    const { from, to } = req.query;
+
+    // Calculate date ranges for quick buttons
+    const today = new Date();
+    const last7 = new Date();
+    last7.setDate(today.getDate() - 6); // Last 7 days includes today
+    const last30 = new Date();
+    last30.setDate(today.getDate() - 29); // Last 30 days includes today
+
+    // Format dates as YYYY-MM-DD for input fields
+    const formatDate = (d) => d.toISOString().split("T")[0];
+
+    // Build WHERE clause dynamically
+    const whereClauses = ["area_id = $1"];
+    const params = [areaId];
+    let paramIndex = 2;
+
+    if (from) {
+      whereClauses.push(`violation_time::date >= $${paramIndex}`);
+      params.push(from);
+      paramIndex++;
+    }
+
+    if (to) {
+      whereClauses.push(`violation_time::date <= $${paramIndex}`);
+      params.push(to);
+      paramIndex++;
+    }
+
+    const query = `
+      SELECT *
+      FROM challan_details_view
+      WHERE ${whereClauses.join(" AND ")}
+      ORDER BY violation_time DESC
+      LIMIT 100
+    `;
+
+    const result = await pool.query(query, params);
+
+    renderWithLayout(res, "challan", {
+      title: "E-Challans - Traffic Management",
+      user: req.session.user,
+      showSidebar: true,
+      challans: result.rows,
+      areaId,
+      from: from || "",
+      to: to || "",
+      today: formatDate(today),
+      last7: formatDate(last7),
+      last30: formatDate(last30)
+    });
+  } catch (err) {
+    console.error("❌ Challan fetch error:", err);
+    res.status(500).send("Error fetching challans");
+  }
+});
+
+
+/* ========================= ACCIDENTS ========================= */
+app.get("/accidents", isAuthenticated, async (req, res) => {
+  const areaId = req.session.selectedArea;
+  if (!areaId) return res.redirect("/");
+
+  // Get from/to dates from query params
+  const from = req.query.from ? new Date(req.query.from) : null;
+  const to = req.query.to ? new Date(req.query.to) : null;
+
+  try {
+    let query = `
+      SELECT *
+      FROM accident_details_view
+      WHERE area_id = $1
+    `;
+    const params = [areaId];
+
+    if (from && to) {
+      query += " AND accident_time::date BETWEEN $2 AND $3";
+      params.push(from.toISOString().split("T")[0], to.toISOString().split("T")[0]);
+    }
+
+    query += " ORDER BY accident_time DESC LIMIT 100";
+
+    const result = await pool.query(query, params);
+
+    // Dates for quick buttons
+    const today = new Date().toISOString().split("T")[0];
+    const last7 = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    const last30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
+    renderWithLayout(res, "accidents", {
+      title: "Accidents - Traffic Management",
+      user: req.session.user,
+      showSidebar: true,
+      accidents: result.rows,
+      areaId,
+      from: req.query.from || today,
+      to: req.query.to || today,
+      today,
+      last7,
+      last30
+    });
+
+  } catch (err) {
+    console.error("❌ Accident fetch error:", err);
+    res.status(500).send("Error fetching accidents");
+  }
+});
+
+
+
+
 /* ========================= AUTH ========================= */
 app.get("/login", (req, res) => {
   if (req.session.user) return res.redirect("/");
@@ -454,6 +572,7 @@ app.get("/logout", (req, res) => {
 /* ========================= SOCKET.IO + PG LISTENER ========================= */
 io.on("connection", (socket) => {
   console.log("🔌 Client connected:", socket.id);
+
   socket.on("disconnect", () => {
     console.log("❌ Client disconnected:", socket.id);
   });
@@ -464,41 +583,70 @@ async function initPgListener() {
 
   client.on("error", (err) => {
     console.error("❌ PG listener error:", err);
-    setTimeout(initPgListener, 5000);
+    setTimeout(initPgListener, 5000); // retry on error
   });
 
   client.on("end", () => {
     console.warn("⚠️ PG listener disconnected, retrying...");
-    setTimeout(initPgListener, 5000);
+    setTimeout(initPgListener, 5000); // retry on disconnect
   });
 
   client.on("notification", (msg) => {
     try {
       const data = JSON.parse(msg.payload);
-      console.log("📡 DB notification:", data);
 
-      data.date = dayjs(data.timestamp).tz("Asia/Kolkata").format("YYYY-MM-DD");
-      data.hour = data.hour_slot;
+      // Format timestamp consistently
+      if (data.violation_time) {
+        data.formattedTime = dayjs(data.violation_time)
+          .tz("Asia/Kolkata")
+          .format("YYYY-MM-DD HH:mm:ss");
+      }
+      if (data.accident_time) {
+        data.formattedTime = dayjs(data.accident_time)
+          .tz("Asia/Kolkata")
+          .format("YYYY-MM-DD HH:mm:ss");
+      }
 
-      io.emit("traffic_update", data);
-    } catch (e) {
-      console.error("Notification parse error:", e);
+      switch (msg.channel) {
+        case "traffic_update":
+          data.date = dayjs(data.timestamp).tz("Asia/Kolkata").format("YYYY-MM-DD");
+          data.hour = data.hour_slot || null;
+          io.emit("traffic_update", data);
+          break;
+
+        case "challan_update":
+          io.emit("challan_update", data);
+          break;
+
+        case "accident_update":
+          io.emit("accident_update", data);
+          break;
+
+        default:
+          console.warn("⚠️ Unknown PG channel:", msg.channel);
+      }
+
+      console.log(`📡 DB notification [${msg.channel}]:`, data);
+
+    } catch (err) {
+      console.error("❌ Notification parse error:", err);
     }
-
   });
 
+  // Listen to all required channels
   await client.query("LISTEN traffic_update");
-  console.log("👂 Listening for PG channel: traffic_update");
+  await client.query("LISTEN challan_update");
+  await client.query("LISTEN accident_update");
+  console.log("👂 Listening for PG channels: traffic_update, challan_update, accident_update");
 }
 
-// Start listener
+// Start the PostgreSQL listener with auto-retry
 initPgListener().catch((err) => {
-  console.error("Failed to start PG listener:", err);
+  console.error("❌ Failed to start PG listener:", err);
   setTimeout(initPgListener, 5000);
 });
-
 
 /* ========================= SERVER ========================= */
 server.listen(PORT, () => {
   console.log(`✅ Server running at http://localhost:${PORT}`);
-}); 
+});

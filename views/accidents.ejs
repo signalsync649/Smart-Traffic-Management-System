@@ -1,0 +1,104 @@
+<div class="space-y-10 max-w-7xl mx-auto">
+
+  <!-- Title -->
+  <div class="text-center mb-8 animate-fade-in">
+    <h1 class="text-2xl md:text-3xl font-bold text-gray-800">🚨 Accidents</h1>
+    <p class="text-gray-600 mt-2">
+      Viewing accidents for Area ID: <%= areaId || "N/A" %>
+    </p>
+  </div>
+
+  <!-- Date Filter -->
+  <form method="get" action="/accidents"
+    class="bg-white p-4 rounded-2xl shadow border border-gray-200 flex flex-wrap items-end gap-4 mb-6 animate-slide-up">
+    <div>
+      <label class="text-sm text-gray-600">From:</label>
+      <input type="date" name="from" value="<%= from || "" %>" class="border rounded-lg px-3 py-2 text-sm">
+    </div>
+    <div>
+      <label class="text-sm text-gray-600">To:</label>
+      <input type="date" name="to" value="<%= to || "" %>" class="border rounded-lg px-3 py-2 text-sm">
+    </div>
+    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+      Apply
+    </button>
+
+    <!-- Quick buttons -->
+    <div class="flex gap-2 ml-auto">
+      <a href="/accidents?from=<%= today %>&to=<%= today %>"
+        class="bg-gray-100 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-200 transition">Today</a>
+      <a href="/accidents?from=<%= last7 %>&to=<%= today %>"
+        class="bg-gray-100 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-200 transition">Last 7 Days</a>
+      <a href="/accidents?from=<%= last30 %>&to=<%= today %>"
+        class="bg-gray-100 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-200 transition">Last 30 Days</a>
+    </div>
+  </form>
+
+  <!-- Accident Table -->
+  <div class="overflow-x-auto bg-white rounded-lg shadow-md p-4 animate-slide-up">
+    <table class="w-full border-collapse text-sm text-left">
+      <thead class="bg-gray-100">
+        <tr>
+          <th class="px-4 py-2 border">#</th>
+          <th class="px-4 py-2 border">Timestamp</th>
+          <th class="px-4 py-2 border">Area</th>
+          <th class="px-4 py-2 border">Signal</th>
+          <th class="px-4 py-2 border">Photo</th>
+          <th class="px-4 py-2 border">Severity</th>
+          <th class="px-4 py-2 border">Description</th>
+        </tr>
+      </thead>
+      <tbody id="accidentTableBody">
+        <% if (accidents && accidents.length > 0) { %>
+          <% accidents.forEach(acc => { %>
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-2 border"><%= acc.accident_id %></td>
+              <td class="px-4 py-2 border">
+                <%= acc.accident_time ? new Date(acc.accident_time).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "N/A" %>
+              </td>
+              <td class="px-4 py-2 border"><%= acc.area_name || acc.area_id %></td>
+              <td class="px-4 py-2 border"><%= acc.signal_name || acc.signal_id || "N/A" %></td>
+              <td class="px-4 py-2 border">
+                <% if (acc.photo_url) { %>
+                  <img src="<%= acc.photo_url %>" class="h-16 rounded shadow">
+                <% } else { %>
+                  N/A
+                <% } %>
+              </td>
+              <td class="px-4 py-2 border"><%= acc.severity || "N/A" %></td>
+              <td class="px-4 py-2 border"><%= acc.description || "N/A" %></td>
+            </tr>
+          <% }) %>
+        <% } else { %>
+          <tr>
+            <td colspan="7" class="px-4 py-4 text-center text-gray-500">No accidents recorded yet.</td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Live Update via Socket.IO -->
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+
+  socket.on("accident_update", (data) => {
+    const table = document.getElementById("accidentTableBody");
+    const row = document.createElement("tr");
+    row.className = "hover:bg-gray-50";
+
+    row.innerHTML = `
+      <td class="px-4 py-2 border">${data.accident_id}</td>
+      <td class="px-4 py-2 border">${data.accident_time ? new Date(data.accident_time).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "N/A"}</td>
+      <td class="px-4 py-2 border">${data.area_name || data.area_id}</td>
+      <td class="px-4 py-2 border">${data.signal_name || data.signal_id || "N/A"}</td>
+      <td class="px-4 py-2 border">${data.photo_url ? `<img src="${data.photo_url}" class="h-16 rounded shadow">` : "N/A"}</td>
+      <td class="px-4 py-2 border">${data.severity || "N/A"}</td>
+      <td class="px-4 py-2 border">${data.description || "N/A"}</td>
+    `;
+
+    table.prepend(row);
+  });
+</script>
